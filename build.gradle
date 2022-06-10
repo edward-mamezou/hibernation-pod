@@ -1,0 +1,26 @@
+plugins {
+	id 'org.springframework.boot' version '2.6.8'
+	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+	id 'java'
+}
+
+group = 'com.mamezou-tech'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.apache.camel.springboot:camel-spring-boot-starter:3.17.0'
+	implementation 'org.jmdns:jmdns:3.5.7'
+	implementation 'org.xerial:sqlite-jdbc:3.36.0.3'
+
+	developmentOnly 'org.springframework.boot:spring-boot-devtools'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
