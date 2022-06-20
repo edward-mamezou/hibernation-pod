@@ -6,13 +6,11 @@ services:
       - ./front-envoy.yaml:/etc/front-envoy.yaml
       - ./certs:/etc/envoy/certs
     ports:
-      - 8443:8443
+      - 443:443
       - 9901:9901
     command: ["-c", "/etc/front-envoy.yaml", "--service-cluster", "front-proxy"]
   keycloak:
     image: jboss/keycloak
-    ports:
-      - 8080:8080
     environment:
       KEYCLOAK_USER: admin
       KEYCLOAK_PASSWORD: password
