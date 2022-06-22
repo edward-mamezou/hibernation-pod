@@ -11,7 +11,10 @@ services:
     command: ["-c", "/etc/front-envoy.yaml", "--service-cluster", "front-proxy"]
   keycloak:
     image: jboss/keycloak
+    volumes:
+      - ./datadir:/opt/jboss/keycloak/standalone/data
     environment:
       KEYCLOAK_USER: admin
       KEYCLOAK_PASSWORD: password
       PROXY_ADDRESS_FORWARDING: true
+
