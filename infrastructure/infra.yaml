@@ -1,0 +1,227 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  Certificate:
+    Type: String
+    Description: ALBに割り当てるドメインの証明書のARN
+  DNSName:
+    Type: String
+    Description: ALBに割り当てるドメイン名
+  HostedZoneId:
+    Type: String
+    Description: ALBに割り当てるドメインのゾーンID
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+  Subnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: !Ref AWS::Region
+      MapPublicIpOnLaunch: true
+  Subnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: !Ref AWS::Region
+      MapPublicIpOnLaunch: true
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+  GatewayAttachement:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  Subnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Subnet1
+      RouteTableId: !Ref RouteTable
+  Subnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Subnet2
+      RouteTableId: !Ref RouteTable
+
+  PublicSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: loadbalancer
+      SecurityGroupIngress:
+        CidrIp: 0.0.0.0/0
+        IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+      VpcId: !Ref VPC
+
+  PrivateSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: private
+      VpcId: !Ref VPC
+  PrivateSecurityGroupIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref PrivateSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref PublicSecurityGroup
+  PrivateSecurityGroupIngressFromSelf:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref PrivateSecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref PrivateSecurityGroup
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      SecurityGroups:
+        - !Ref PublicSecurityGroup
+      Subnets:
+        - !Ref Subnet1
+        - !Ref Subnet2
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckPath: /auth/
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 10
+      Matcher:
+        HttpCode: 200
+      Port: 8080
+      Protocol: HTTP
+      TargetType: ip
+      VpcId: !Ref VPC
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      Certificates:
+        - !Ref Certificate
+      DefaultActions:
+        - TargetGroupArn: !Ref TargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "ecs-tasks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: /
+      Policies:
+        - PolicyName: ecsTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: '*'
+  Log:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: 'keycloak'
+  Task:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions:
+        - Name: http
+          Environment:
+            - Name: 'KEYCLOAK_USER'
+              Value: 'admin'
+            - Name: 'KEYCLOAK_PASSWORD'
+              Value: 'password'
+            - Name: 'PROXY_ADDRESS_FORWARDING'
+              Value: 'true'
+          Image: 'jboss/keycloak'
+          LogConfiguration:
+            LogDriver: 'awslogs'
+            Options:
+              awslogs-group: !Ref Log
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: "fargate"
+          MemoryReservation: 2048
+          PortMappings:
+            - ContainerPort: 8080
+      Cpu: 1024
+      ExecutionRoleArn:
+        Fn::GetAtt:
+          - ECSTaskExecutionRole
+          - Arn
+      Family: http
+      Memory: 2048
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+  Service:
+    DependsOn: LoadBalancerListener
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ECSCluster
+      DesiredCount: 0
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: http
+          ContainerPort: 8080
+          TargetGroupArn: !Ref TargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref PrivateSecurityGroup
+          Subnets:
+            - !Ref Subnet1
+            - !Ref Subnet2
+      TaskDefinition: !Ref Task
+
+  RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      AliasTarget:
+        DNSName:
+          Fn::GetAtt:
+            - LoadBalancer
+            - DNSName
+        HostedZoneId:
+          Fn::GetAtt:
+            - LoadBalancer
+            - CanonicalHostedZoneID
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref DNSName
+      Region: !Ref AWS::Region
+      SetIdentifier: 1
+      Type: A
