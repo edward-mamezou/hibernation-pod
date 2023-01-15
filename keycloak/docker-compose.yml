@@ -1,0 +1,17 @@
+version: "3"
+services:
+  envoy:
+    image: envoyproxy/envoy:v1.21-latest
+    volumes:
+      - ./front-envoy.yaml:/etc/front-envoy.yaml
+      - ./certs:/etc/envoy/certs
+    ports:
+      - 443:443
+      - 9901:9901
+    command: ["-c", "/etc/front-envoy.yaml", "--service-cluster", "front-proxy"]
+  keycloak:
+    image: jboss/keycloak
+    environment:
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: password
+      PROXY_ADDRESS_FORWARDING: true
