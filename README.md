@@ -27,3 +27,4 @@ docker run -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=password -p 8080:8080 jbo
 - [Trilarion / java-vorbis-support](https://github.com/Trilarion/java-vorbis-support)
 - [SPRING BOOT](https://camel.apache.org/camel-spring-boot/3.17.x/spring-boot.html)
 - [WebAuthn でパスワードの無い世界へ](https://developer.mamezou-tech.com/blogs/2022/06/15/webauthn-1/)
+- [Spring Boot と Apache Camel の統合](https://developer.mamezou-tech.com/blogs/2022/06/12/spring-boot-with-apache-camel-integration/)
