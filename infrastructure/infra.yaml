@@ -106,7 +106,7 @@ Resources:
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      HealthCheckPath: /
+      HealthCheckPath: /auth/
       HealthCheckProtocol: HTTP
       HealthCheckIntervalSeconds: 120
       HealthCheckTimeoutSeconds: 60
@@ -165,6 +165,8 @@ Resources:
             - start
             - --proxy=edge
             - --hostname-strict=false
+            - --http-relative-path
+            - /auth
           Environment:
             - Name: 'KEYCLOAK_ADMIN'
               Value: 'admin'
