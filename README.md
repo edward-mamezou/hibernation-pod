@@ -19,7 +19,7 @@ mosquitto_pub -t hibernation-pod/hello -m '{"eventId": "6a2e2a34-e9a4-11ec-a6d0-
 ## Keycloak
 
 ```shell
-docker run -e KEYCLOAK_USER=admin -e KEYCLOAK_PASSWORD=password -p 8080:8080 jboss/keycloak
+docker run -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=password -p 8080:8080 quay.io/keycloak/keycloak start-dev
 ```
 
 ## Reference

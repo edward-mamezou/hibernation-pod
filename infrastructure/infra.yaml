@@ -106,7 +106,7 @@ Resources:
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      HealthCheckPath: /auth/
+      HealthCheckPath: /
       HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 10
       Matcher:
@@ -160,14 +160,18 @@ Resources:
     Properties:
       ContainerDefinitions:
         - Name: http
+          Command:
+            - start
+            - --hostname-strict=false
+            - --proxy=edge
           Environment:
-            - Name: 'KEYCLOAK_USER'
+            - Name: 'KEYCLOAK_ADMIN'
               Value: 'admin'
-            - Name: 'KEYCLOAK_PASSWORD'
+            - Name: 'KEYCLOAK_ADMIN_PASSWORD'
               Value: 'password'
             - Name: 'PROXY_ADDRESS_FORWARDING'
               Value: 'true'
-          Image: 'jboss/keycloak'
+          Image: 'quay.io/keycloak/keycloak'
           LogConfiguration:
             LogDriver: 'awslogs'
             Options:
