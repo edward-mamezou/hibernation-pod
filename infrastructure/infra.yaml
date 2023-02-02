@@ -108,7 +108,8 @@ Resources:
     Properties:
       HealthCheckPath: /
       HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 10
+      HealthCheckIntervalSeconds: 120
+      HealthCheckTimeoutSeconds: 60
       Matcher:
         HttpCode: 200
       Port: 8080
@@ -162,8 +163,8 @@ Resources:
         - Name: http
           Command:
             - start
-            - --hostname-strict=false
             - --proxy=edge
+            - --hostname-strict=false
           Environment:
             - Name: 'KEYCLOAK_ADMIN'
               Value: 'admin'
