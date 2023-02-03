@@ -10,11 +10,17 @@ services:
       - 9901:9901
     command: ["-c", "/etc/front-envoy.yaml", "--service-cluster", "front-proxy"]
   keycloak:
-    image: jboss/keycloak
+    image: quay.io/keycloak/keycloak
     volumes:
-      - ./datadir:/opt/jboss/keycloak/standalone/data
+      - ./datadir:/opt/keycloak/data
+    command:
+      - start
+      - --proxy=edge
+      - --hostname-strict=false
+      - --http-relative-path
+      - auth
     environment:
-      KEYCLOAK_USER: admin
-      KEYCLOAK_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: password
       PROXY_ADDRESS_FORWARDING: true
 
